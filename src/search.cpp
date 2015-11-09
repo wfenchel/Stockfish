@@ -326,12 +326,16 @@ void MainThread::think() {
       wait(Signals.stop);
   }
 
-  // Check if there are threads with a better score than main thread.
-  Thread* bestThread = this;
+  // Search amongst deep threads for one with a good score.
+  Thread* bestThread = nullptr;
+  Depth highestDepth = DEPTH_NONE;
   for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+      highestDepth = std::max(th->completedDepth, highestDepth);
+  for (Thread* th : Threads)
+      if (10 * th->completedDepth >= 9 * highestDepth
+              && (!bestThread
+                  || (th->rootMoves[0].score > bestThread->rootMoves[0].score)) )
+          bestThread = th;
 
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
