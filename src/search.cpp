@@ -220,6 +220,11 @@ uint64_t Search::perft(Position& pos, Depth depth) {
 template uint64_t Search::perft<true>(Position&, Depth);
 
 
+int A = 5;
+int B = -1;
+
+TUNE(SetRange(0, 20), A, SetRange(-10, 10), B);
+
 /// MainThread::think() is called by the main thread when the program receives
 /// the UCI 'go' command. It searches from root position and at the end prints
 /// the "bestmove" to output.
@@ -327,11 +332,22 @@ void MainThread::think() {
   }
 
   // Check if there are threads with a better score than main thread.
-  Thread* bestThread = this;
+  Thread* bestThread = nullptr;
+  int bestScore = 0;
+  Depth highestDepth = DEPTH_NONE;
   for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+      highestDepth = std::max(th->completedDepth, highestDepth);
+  for (Thread* th : Threads)
+  {
+      int depthD2 = highestDepth - th->completedDepth;
+      depthD2 *= depthD2;
+      int score = 20 * int(th->rootMoves[0].score) - A * depthD2 + B * th->idx;
+      if ( !bestThread || score > bestScore )
+      {
+          bestThread = th;
+          bestScore = score;
+      }
+  }
 
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
