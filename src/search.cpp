@@ -221,9 +221,10 @@ template uint64_t Search::perft<true>(Position&, Depth);
 
 
 int A = 5;
-int B = -1;
+//int B = -1;
 
-TUNE(SetRange(0, 20), A, SetRange(-10, 10), B);
+//TUNE(SetRange(0, 20), A, SetRange(-10, 10), B);
+TUNE(SetRange(0, 20), A);
 
 /// MainThread::think() is called by the main thread when the program receives
 /// the UCI 'go' command. It searches from root position and at the end prints
@@ -341,7 +342,7 @@ void MainThread::think() {
   {
       int depthD2 = highestDepth - th->completedDepth;
       depthD2 *= depthD2;
-      int score = 20 * int(th->rootMoves[0].score) - A * depthD2 + B * th->idx;
+      int score = 20 * int(th->rootMoves[0].score) - A * depthD2;// + B * th->idx;
       if ( !bestThread || score > bestScore )
       {
           bestThread = th;
