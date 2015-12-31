@@ -353,8 +353,8 @@ void MainThread::search() {
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, user stops the search, or the maximum search depth is reached.
 
-int A = 288;
-TUNE(SetRange(96, 512), A);
+int A = 18;
+TUNE(SetRange(6, 32), A);
 int B = 8;
 TUNE(SetRange(2, 24), B);
 int C = 0;
@@ -435,7 +435,7 @@ void Thread::search() {
           lastValue = rootMoves[PVIdx].previousScore;
           if (rootDepth >= 5 * ONE_PLY)
           {
-              delta = Value(A / 16);
+              delta = Value(A);
               alpha = std::max(lastValue - delta,-VALUE_INFINITE);
               beta  = std::min(lastValue + delta, VALUE_INFINITE);
           }
