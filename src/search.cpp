@@ -363,13 +363,13 @@ TUNE(SetRange(-16, 48), C);
 void Thread::search() {
 
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
-  Value bestValue, alpha, beta, delta;
+  Value bestValue, lastValue, guessValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
-  bestValue = delta = alpha = -VALUE_INFINITE;
+  bestValue = lastValue = guessValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
   completedDepth = DEPTH_ZERO;
 
@@ -432,7 +432,7 @@ void Thread::search() {
       for (PVIdx = 0; PVIdx < multiPV && !Signals.stop; ++PVIdx)
       {
           // Reset aspiration window starting size
-          Value lastValue = rootMoves[PVIdx].previousScore;
+          lastValue = rootMoves[PVIdx].previousScore;
           if (rootDepth >= 5 * ONE_PLY)
           {
               delta = Value(A / 16);
@@ -485,7 +485,7 @@ void Thread::search() {
               }
 
               delta += B * delta / 16;
-              Value guessValue = (C * lastValue + (32 - C) * bestValue) / 32;
+              guessValue = (C * lastValue + (32 - C) * bestValue) / 32;
               lastValue = bestValue;
               alpha = std::max(guessValue - delta,-VALUE_INFINITE);
               beta  = std::min(guessValue + delta, VALUE_INFINITE);
