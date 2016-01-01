@@ -353,23 +353,23 @@ void MainThread::search() {
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, user stops the search, or the maximum search depth is reached.
 
-int A = 32;
+int A = 17;
 TUNE(SetRange(6, 96), A);
 int B = 24;
-TUNE(SetRange(2, 96), B);
-int C = -16;
-TUNE(SetRange(-64, 64), C);
+TUNE(SetRange(4, 192), B);
+int C = -24;
+TUNE(SetRange(-128, 128), C);
 
 void Thread::search() {
 
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
-  Value bestValue, lastValue, guessValue, alpha, beta, delta;
+  Value bestValue, prevValue, guessValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
-  bestValue = lastValue = guessValue = delta = alpha = -VALUE_INFINITE;
+  bestValue = prevValue = guessValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
   completedDepth = DEPTH_ZERO;
 
@@ -435,9 +435,9 @@ void Thread::search() {
           if (rootDepth >= 5 * ONE_PLY)
           {
               delta = Value(A);
-              lastValue = rootMoves[PVIdx].previousScore;
-              alpha = std::max(lastValue - delta,-VALUE_INFINITE);
-              beta  = std::min(lastValue + delta, VALUE_INFINITE);
+              prevValue = rootMoves[PVIdx].previousScore;
+              alpha = std::max(prevValue - delta,-VALUE_INFINITE);
+              beta  = std::min(prevValue + delta, VALUE_INFINITE);
           }
 
           // Start with a small aspiration window and, in the case of a fail
@@ -484,9 +484,9 @@ void Thread::search() {
                       sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
               }
 
-              delta += B * delta / 16;
-              guessValue = (C * lastValue + (32 - C) * bestValue) / 32;
-              lastValue = bestValue;
+              delta += B * delta / 32;
+              guessValue = (C * prevValue + (64 - C) * bestValue) / 64;
+              prevValue = bestValue;
               alpha = std::max(guessValue - delta,-VALUE_INFINITE);
               beta  = std::min(guessValue + delta, VALUE_INFINITE);
           }
