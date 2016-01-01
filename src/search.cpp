@@ -353,16 +353,23 @@ void MainThread::search() {
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, user stops the search, or the maximum search depth is reached.
 
+const int A = 17;
+//TUNE(SetRange(6, 96), A);
+const int B = 12;
+//TUNE(SetRange(2, 96), B);
+const int C = -12;
+//TUNE(SetRange(-64, 64), C);
+
 void Thread::search() {
 
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
-  Value bestValue, alpha, beta, delta;
+  Value bestValue, prevValue, guessValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
   MainThread* mainThread = (this == Threads.main() ? Threads.main() : nullptr);
 
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
-  bestValue = delta = alpha = -VALUE_INFINITE;
+  bestValue = prevValue = guessValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
   completedDepth = DEPTH_ZERO;
 
@@ -427,9 +434,10 @@ void Thread::search() {
           // Reset aspiration window starting size
           if (rootDepth >= 5 * ONE_PLY)
           {
-              delta = Value(18);
-              alpha = std::max(rootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
-              beta  = std::min(rootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
+              delta = Value(A);
+              prevValue = rootMoves[PVIdx].previousScore;
+              alpha = std::max(prevValue - delta,-VALUE_INFINITE);
+              beta  = std::min(prevValue + delta, VALUE_INFINITE);
           }
 
           // Start with a small aspiration window and, in the case of a fail
@@ -458,38 +466,29 @@ void Thread::search() {
               if (Signals.stop)
                   break;
 
-              // When failing high/low give some update (without cluttering
-              // the UI) before a re-search.
-              if (   mainThread
-                  && multiPV == 1
-                  && (bestValue <= alpha || bestValue >= beta)
-                  && Time.elapsed() > 3000)
-                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              // Exit the loop if not failing low/high; otherwise re-search
+              if (bestValue > alpha && bestValue < beta)
+                  break;
 
-              // In case of failing low/high increase aspiration window and
-              // re-search, otherwise exit the loop.
-              if (bestValue <= alpha)
+              if (mainThread)
               {
-                  beta = (alpha + beta) / 2;
-                  alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-
-                  if (mainThread)
+                  if (bestValue <= alpha)
                   {
                       mainThread->failedLow = true;
                       Signals.stopOnPonderhit = false;
                   }
-              }
-              else if (bestValue >= beta)
-              {
-                  alpha = (alpha + beta) / 2;
-                  beta = std::min(bestValue + delta, VALUE_INFINITE);
-              }
-              else
-                  break;
 
-              delta += delta / 4 + 5;
+                  // When failing high/low give some update (without cluttering
+                  // the UI) before a re-search.
+                  if (multiPV == 1 && Time.elapsed() > 3000)
+                      sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              }
 
-              assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
+              delta += B * delta / 16;
+              guessValue = (C * prevValue + (32 - C) * bestValue) / 32;
+              prevValue = bestValue;
+              alpha = std::max(guessValue - delta,-VALUE_INFINITE);
+              beta  = std::min(guessValue + delta, VALUE_INFINITE);
           }
 
           // Sort the PV lines searched so far and update the GUI
